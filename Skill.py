@@ -1,7 +1,10 @@
 import tweepy
+import emoji
+import re
 
 # Consumer keys and access tokens, used for OAuth
-#Taken out for privacy
+# Hidden for privacy
+
 
 # OAuth process, using the keys and tokens
 auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
@@ -65,7 +68,8 @@ def get_team_tweet(intent):
         team_name = intent["slots"]["Team"]["value"]
         team_handle = get_team_handle(team_name)
         tweet = api.user_timeline(screen_name=team_handle, count=1)[0].text
-        speech_output = "The " + team_name + " last tweeted, " + tweet
+        cleaned_tweet = clean_tweet_text(tweet, team_name)
+        speech_output = "The " + team_name + " last tweeted, " + cleaned_tweet
         card_title = team_name + "'s Most Recent Tweet"
     else:
         speech_output = "I'm not sure what team you're asking for. Please try again."
@@ -81,6 +85,7 @@ def get_team_handle(team_name):
         "GOLDEN STATE WARRIORS": "warriors",
         "DUBS": "warriors",
         "GOLDEN STATE": "warriors",
+        "WARRIORS": "warriors",
         "NINERS": "49ers",
         "SAN FRANCISCO 49ERS": "49ers",
         "FORTY NINERS": "49ers",
@@ -93,6 +98,25 @@ def get_team_handle(team_name):
         "EARTHQUAKES": "SJEarthquakes",
         "SAN JOSE EARTHQUAKES": "SJEarthquakes"
     }.get(team_name)
+
+def clean_tweet_text(tweet, team):
+    # Remove urls
+    urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', tweet)
+    for url in urls:
+        tweet = tweet.replace(url, ", a link on the " + team + "'s timeline,")
+
+    # Remove \n
+    tweet = tweet.replace("\n", "")
+
+    # Remove emojis
+    for c in emoji.UNICODE_EMOJI:
+        if c in tweet:
+            tweet = tweet.replace(c, "")
+
+    # Replace all number symbols with "hashtag"
+    tweet = tweet.replace("#", "hashtag ")
+
+    return tweet
 
 # ------------- Helpers to build JSON response -------------------------------
 def build_speechlet_response(title, output, reprompt_text, should_end_session):
@@ -137,3 +161,33 @@ def lambda_handler(event, context):
         return on_intent(event["request"], event["session"])
     elif event["request"]["type"] == "SessionEndedRequest":
         return on_session_ended(event["request"], event["session"])
+
+print(lambda_handler({
+  "session": {
+    "sessionId": "SessionId.93467e84-a6df-439f-bbdf-abf301b667df",
+    "application": {
+      "applicationId": "amzn1.ask.skill.5b80f255-b8dd-431e-a332-40e24aa57b38"
+    },
+    "attributes": {},
+    "user": {
+      "userId": "amzn1.ask.account.AH4ZGVF2HO36GMJJTG6AOUHOGWF23DDSL7EOJG442KWNJSTXUWAP6WB6VYJUPUUGDIZOI3DX2JTTF347PCEWDO3OL5BSSC3XG62N32DBSSSTRW4KQYS2KD3SMWJGMP5P47CELV53I73H6OUEXGCGDAHXB7UD6YBJLD42XG7XMB7ROJXMI7JY7UJGNRME24A3PZXI2P4P2BNGVXA"
+    },
+    "new": True
+  },
+  "request": {
+    "type": "IntentRequest",
+    "requestId": "EdwRequestId.eb087ea8-0cb5-4f21-874d-87cd0f4e7cec",
+    "locale": "en-US",
+    "timestamp": "2017-07-11T04:24:00Z",
+    "intent": {
+      "name": "GetTweet",
+      "slots": {
+        "Team": {
+          "name": "Team",
+          "value": "dubs"
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}, None))

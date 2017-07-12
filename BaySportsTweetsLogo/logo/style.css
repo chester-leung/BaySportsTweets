@@ -1,0 +1,43 @@
+body {
+	background: white;
+}
+
+.box {
+	position: relative;
+	border: solid 4px white;
+	display: block;
+	
+	width: 512px;
+	height: 512px;
+	background: #1DA1F2;
+}
+
+.speech-bubble {
+	position: absolute;
+	border-radius: 60%;
+	background: white;
+	height: 60%;
+	width: 85%;
+	top: 18%;
+	left: 7.5%;
+
+}
+
+.speech-bubble-point {
+	position: absolute;
+	-webkit-clip-path: polygon(62% 1%, 15% 83%, 100% 35%);
+	clip-path: polygon(62% 1%, 15% 83%, 100% 35%);
+	background: white;
+	height: 20%;
+	width: 20%;
+	top: 63%;
+	left: 10%;
+}
+
+.text {
+	color: #1DA1F2;
+	font-size: 150px;
+	margin-top: 14%;
+	text-align: center;
+	font-family: 'Fjalla One', sans-serif;
+}
