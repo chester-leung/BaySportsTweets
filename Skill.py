@@ -3,7 +3,7 @@ import emoji
 import re
 
 # Consumer keys and access tokens, used for OAuth
-# Taken out for security
+
 
 
 # OAuth process, using the keys and tokens
@@ -67,7 +67,7 @@ def handle_session_end_request():
 def get_team_tweet(intent):
     card_title = "Most Recent Tweet"
 
-    if "Team" in intent["slots"]:
+    if "Team" in intent["slots"] and intent["slots"]["Team"].get("value") is not None:
         team_name = intent["slots"]["Team"]["value"]
         team_handle = get_team_handle(team_name)
         if team_handle is not None:
@@ -208,3 +208,32 @@ def lambda_handler(event, context):
         return on_intent(event["request"], event["session"])
     elif event["request"]["type"] == "SessionEndedRequest":
         return on_session_ended(event["request"], event["session"])
+
+print(lambda_handler({
+  "session": {
+    "sessionId": "SessionId.3e7d8685-ae70-4a10-817e-5b246428cb15",
+    "application": {
+      "applicationId": "amzn1.ask.skill.5b80f255-b8dd-431e-a332-40e24aa57b38"
+    },
+    "attributes": {},
+    "user": {
+      "userId": "amzn1.ask.account.AH4ZGVF2HO36GMJJTG6AOUHOGWF23DDSL7EOJG442KWNJSTXUWAP6WB6VYJUPUUGDIZOI3DX2JTTF347PCEWDO3OL5BSSC3XG62N32DBSSSTRW4KQYS2KD3SMWJGMP5P47CELV53I73H6OUEXGCGDAHXB7UD6YBJLD42XG7XMB7ROJXMI7JY7UJGNRME24A3PZXI2P4P2BNGVXA"
+    },
+    "new": True
+  },
+  "request": {
+    "type": "IntentRequest",
+    "requestId": "EdwRequestId.d908ce00-775a-4e7c-8f29-40384f7b3b7e",
+    "locale": "en-US",
+    "timestamp": "2017-07-14T05:40:43Z",
+    "intent": {
+      "name": "GetTweet",
+      "slots": {
+        "Team": {
+          "name": "Team",
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}, None))
