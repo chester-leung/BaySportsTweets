@@ -3,7 +3,7 @@ import emoji
 import re
 
 # Consumer keys and access tokens, used for OAuth
-# Hidden for privacy
+# Taken out for security
 
 
 # OAuth process, using the keys and tokens
@@ -33,6 +33,8 @@ def on_intent(intent_request, session):
 
     if intent_name == "GetTweet":
         return get_team_tweet(intent)
+    elif intent_name == "GetBool":
+        return get_bool(intent)
     elif intent_name == "AMAZON.HelpIntent":
         return get_welcome_response()
     elif intent_name == "AMAZON.CancelIntent" or intent_name == "AMAZON.StopIntent":
@@ -42,13 +44,14 @@ def on_intent(intent_request, session):
 
 def on_session_ended(session_ended_request, session):
     print("Ending session.")
+    return handle_session_end_request()
 
 # ------------------- Functions that control the skill's behavior ---------------------
 def get_welcome_response():
     session_attributes = {}
     card_title = "Bay Area Sports Tweets"
     speech_output = "Welcome to the Alexa Bay Area Sports Tweets skill. " \
-                    "You can ask me for the most recent tweet from a Bay Area Sports team"
+                    "You can ask me for the most recent tweet from a Bay Area Sports team."
     reprompt_text = "Please ask me for the latest tweet from a Bay Area Sports Team, like the Warriors."
     should_end_session = False
     return build_response(session_attributes, build_speechlet_response(
@@ -67,17 +70,24 @@ def get_team_tweet(intent):
     if "Team" in intent["slots"]:
         team_name = intent["slots"]["Team"]["value"]
         team_handle = get_team_handle(team_name)
-        tweet = api.user_timeline(screen_name=team_handle, count=1)[0].text
-        cleaned_tweet = clean_tweet_text(tweet, team_name)
-        speech_output = "The " + team_name + " last tweeted, " + cleaned_tweet
-        card_title = team_name + "'s Most Recent Tweet"
+        if team_handle is not None:
+            tweet = api.user_timeline(screen_name=team_handle, count=1)[0].text
+            cleaned_tweet = clean_tweet_text(tweet, team_name)
+            team_name = team_name[0].upper() + team_name[1:]
+            speech_output = "The " + team_name + " last tweeted, " + cleaned_tweet + ". Do you want another update?"
+            card_title = team_name + "'s Most Recent Tweet"
+            should_end_session = False
+        else:
+            speech_output = "Sorry, I cannot get " + team_name + "'s tweet. What Bay Area Sports team would you like an update for?."
+            should_end_session = False
     else:
-        speech_output = "I'm not sure what team you're asking for. Please try again."
+        speech_output = "I'm not sure what team you're asking for. Please try again. What team are you looking for?"
+        should_end_session = False
 
-    reprompt_text = "You can ask me for another team's tweet by saying, for example, update me on the Giants."
+    reprompt_text = "What team would you like an update for?"
 
     return build_response({}, build_speechlet_response(
-        card_title, speech_output, reprompt_text, False))
+        card_title, speech_output, reprompt_text, should_end_session))
 
 def get_team_handle(team_name):
     team_name = team_name.upper()
@@ -103,8 +113,10 @@ def clean_tweet_text(tweet, team):
     # Remove urls
     urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', tweet)
     for url in urls:
-        tweet = tweet.replace(url, ", a link on the " + team + "'s timeline,")
+        tweet = tweet.replace(url, "<link available>")
 
+    if "RT" in tweet:
+        tweet = tweet.replace("RT", "Retweet")
     # Remove \n
     tweet = tweet.replace("\n", "")
 
@@ -114,9 +126,44 @@ def clean_tweet_text(tweet, team):
             tweet = tweet.replace(c, "")
 
     # Replace all number symbols with "hashtag"
-    tweet = tweet.replace("#", "hashtag ")
+    tweet = tweet.replace("#", ", <hashtag> ")
 
     return tweet
+
+# This function will be called when the user answers yes/no to "would you like another update"
+def get_bool(intent):
+    if "Bool" in intent["slots"]:
+        bool_val = intent["slots"]["Bool"]["value"]
+        more_wanted = get_bool_val(bool_val)
+        if more_wanted == 1:
+            speech_output = "What Bay Area Sports team would you like an update for?"
+            should_end_session = False
+            card_title = "Getting another team's tweet"
+        elif more_wanted == 0:
+            return handle_session_end_request()
+        else:
+            # Neither yes or no was answered
+            speech_output = "Sorry, I didn't catch that. Please answer yes or no. Would you like another update?"
+            card_title = "Getting another team's tweet"
+            should_end_session = False
+    else:
+        speech_output = "Sorry, I didn't catch that. Please answer yes or no. Would you like another update?"
+        should_end_session = False
+
+    reprompt_text = "Do you want another update?"
+
+    return build_response({}, build_speechlet_response(
+        card_title, speech_output, reprompt_text, should_end_session))
+
+# Checks if user answered yes or no
+def get_bool_val(response):
+    response = response.lower()
+    if "y" == response[0]:
+        return 1
+    elif response == "no" or response == "nah" or response == "naw" or response == "nope":
+        return 0
+    else:
+        return None
 
 # ------------- Helpers to build JSON response -------------------------------
 def build_speechlet_response(title, output, reprompt_text, should_end_session):
@@ -161,33 +208,3 @@ def lambda_handler(event, context):
         return on_intent(event["request"], event["session"])
     elif event["request"]["type"] == "SessionEndedRequest":
         return on_session_ended(event["request"], event["session"])
-
-print(lambda_handler({
-  "session": {
-    "sessionId": "SessionId.93467e84-a6df-439f-bbdf-abf301b667df",
-    "application": {
-      "applicationId": "amzn1.ask.skill.5b80f255-b8dd-431e-a332-40e24aa57b38"
-    },
-    "attributes": {},
-    "user": {
-      "userId": "amzn1.ask.account.AH4ZGVF2HO36GMJJTG6AOUHOGWF23DDSL7EOJG442KWNJSTXUWAP6WB6VYJUPUUGDIZOI3DX2JTTF347PCEWDO3OL5BSSC3XG62N32DBSSSTRW4KQYS2KD3SMWJGMP5P47CELV53I73H6OUEXGCGDAHXB7UD6YBJLD42XG7XMB7ROJXMI7JY7UJGNRME24A3PZXI2P4P2BNGVXA"
-    },
-    "new": True
-  },
-  "request": {
-    "type": "IntentRequest",
-    "requestId": "EdwRequestId.eb087ea8-0cb5-4f21-874d-87cd0f4e7cec",
-    "locale": "en-US",
-    "timestamp": "2017-07-11T04:24:00Z",
-    "intent": {
-      "name": "GetTweet",
-      "slots": {
-        "Team": {
-          "name": "Team",
-          "value": "dubs"
-        }
-      }
-    }
-  },
-  "version": "1.0"
-}, None))
